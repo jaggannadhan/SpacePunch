@@ -8,7 +8,11 @@
       "Bash(./node_modules/.bin/vite build)",
       "Bash(python3 -c \"from PIL import Image; print\\(''ok''\\)\")",
       "Bash(magick identify /Users/jv/Documents/MyProjects/SpacePunch/src/assets/skins/spaceship1.png /Users/jv/Documents/MyProjects/SpacePunch/src/assets/skins/spaceship2.png)",
-      "Bash(npx vite build)"
+      "Bash(npx vite build)",
+      "Bash(npm i @vercel/analytics)",
+      "Bash(npm install typescript vite --save-dev)",
+      "Bash(echo $NODE_ENV)",
+      "Bash(git rm -r --cached node_modules)"
     ]
   }
 }

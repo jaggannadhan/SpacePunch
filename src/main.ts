@@ -1,7 +1,10 @@
 import Phaser from 'phaser';
+import { inject } from '@vercel/analytics';
 import { GameScene } from './game/scenes/GameScene';
 import { GAME_WIDTH, GAME_HEIGHT } from './game/GameConfig';
 import './ui/styles.css';
+
+inject();
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
