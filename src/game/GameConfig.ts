@@ -125,6 +125,28 @@ export const ULTIMATE_DURATION_MS = 10_000;
 export const ULTIMATE_MAGNET_SPEED = 350; // px/s base attraction speed
 export const ULTIMATE_MAGNET_ACCEL = 600; // px/s² acceleration as loot approaches
 
+// ── Projectile / Ammunition ──
+export const PROJECTILE_SPEED = 550; // px/s upward
+export const PROJECTILE_RADIUS = 3;
+export const MUZZLE_OFFSET_X = 12; // px left/right of car center
+export const MUZZLE_OFFSET_Y = -20; // px above car center
+export const METEOR_HP_DIVISOR = 12; // maxHp = ceil(diameter / divisor)
+export const AMMO_MAX_LEVEL = 3;
+export const AMMO_UPGRADE_COST = 10; // gold spent per upgrade
+export const AMMO_FIRE_INTERVALS: Record<number, number> = {
+  1: 500, // 0.5s
+  2: 100, // 0.1s
+  3: 100, // 0.1s (weighted/red)
+};
+export const AMMO_LV3_DAMAGE = 0.25; // damage per hit at level 3
+// ── Super Saiyan ──
+export const SS_DIAMOND_LV1 = 5;   // diamonds needed to unlock level 1
+export const SS_DIAMOND_LV2 = 10;  // diamonds needed to unlock level 2
+export const INFINITE_SHIELD_DURATION_MS = 20_000; // 20s per charge
+export const SS_BUBBLE_RADIUS = 31; // bubble around car (CAR_RENDER_SIZE * 0.65)
+export const SS_BUBBLE_RINGS = 12;  // concentric rings for inward diffusion
+export const SS_BUBBLE_PULSE_SPEED = 4.5; // radians/s for shimmer
+
 // ── Loot (collectibles) ──
 export const LOOT_RENDER_SIZE = CAR_RENDER_SIZE * 0.5; // half the car
 export const LOOT_HIT_RADIUS = 12;

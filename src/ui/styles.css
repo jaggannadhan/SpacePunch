@@ -110,6 +110,20 @@ canvas { display: block; }
   flex-shrink: 0;
 }
 
+/* ── Super Saiyan status ── */
+.ss-status {
+  margin-top: 4px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #44eeff;
+  text-shadow: 0 0 8px rgba(68, 238, 255, 0.6);
+  animation: ssGlow 1.2s ease-in-out infinite alternate;
+}
+@keyframes ssGlow {
+  0% { opacity: 0.7; text-shadow: 0 0 6px rgba(68, 238, 255, 0.4); }
+  100% { opacity: 1; text-shadow: 0 0 12px rgba(68, 238, 255, 0.8); }
+}
+
 /* Timer blink animation */
 .blink {
   animation: timerBlink 0.3s ease-in-out infinite alternate,
@@ -438,6 +452,113 @@ canvas { display: block; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── Equip UI (bottom-right) ── */
+.equip-area {
+  position: absolute;
+  bottom: 14px; right: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: all;
+}
+
+.equip-btn {
+  position: relative;
+  width: 40px; height: 40px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,200,50,0.4);
+  background: rgba(255,200,50,0.1);
+  color: #ffcc44;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, border-color 0.2s;
+}
+.equip-btn:hover {
+  background: rgba(255,200,50,0.2);
+  border-color: rgba(255,200,50,0.6);
+}
+
+.equip-badge {
+  position: absolute;
+  top: -5px; right: -5px;
+  min-width: 16px; height: 16px;
+  border-radius: 8px;
+  background: #ff4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  pointer-events: none;
+}
+
+.equip-badge-pulse {
+  animation: badgePulse 0.4s ease-out;
+}
+@keyframes badgePulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.5); }
+  100% { transform: scale(1); }
+}
+
+.equip-panel {
+  background: rgba(10,10,30,0.92);
+  border: 1px solid rgba(255,200,50,0.25);
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  backdrop-filter: blur(6px);
+}
+
+.ep-title {
+  font-size: 11px;
+  color: #ffcc44;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.ep-item-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  color: #ccc;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ep-item-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,200,50,0.4);
+}
+.ep-item-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.ep-item-icon {
+  font-size: 16px;
+}
+
+.ep-item-label {
+  flex: 1;
+  letter-spacing: 0.5px;
 }
 
 /* ── Game Over overlay ── */

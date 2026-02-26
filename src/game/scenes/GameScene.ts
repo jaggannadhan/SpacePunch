@@ -18,7 +18,15 @@ import skinsManifest from '../../assets/skins/skins.json';
 import meteorsManifest from '../../assets/meteors/meteors.json';
 import { LootManager } from '../systems/LootManager';
 import { UltimateModeSystem } from '../systems/UltimateModeSystem';
+import { ProjectileSystem } from '../systems/ProjectileSystem';
+import { ShatterVFX } from '../vfx/ShatterVFX';
+import { SuperSaiyanSystem } from '../systems/SuperSaiyanSystem';
 import type { LootType } from '../entities/Loot';
+import {
+  AMMO_MAX_LEVEL, AMMO_UPGRADE_COST,
+  SS_DIAMOND_LV1,
+  SS_BUBBLE_RADIUS, SS_BUBBLE_RINGS, SS_BUBBLE_PULSE_SPEED,
+} from '../GameConfig';
 import powerupsManifest from '../../assets/powerups/powerups.json';
 import lootManifest from '../../assets/loot/loot.json';
 
@@ -76,6 +84,8 @@ export class GameScene extends Phaser.Scene {
   private scoreSystem!: ScoreSystem;
   private stageSystem!: StageSystem;
   private ultimateSystem!: UltimateModeSystem;
+  private projectileSystem!: ProjectileSystem;
+  private superSaiyanSystem!: SuperSaiyanSystem;
   hud!: HUD;
 
   private gameOver = false;
@@ -95,6 +105,10 @@ export class GameScene extends Phaser.Scene {
   private shieldGfx: Phaser.GameObjects.Graphics | null = null;
   private shieldTime = 0; // for pulse animation
   private shieldFlareTimer = 0; // brief flare on hit
+
+  // SS bubble shield graphics
+  private bubbleGfx: Phaser.GameObjects.Graphics | null = null;
+  private bubbleVisible = false;
 
   // VFX systems
   private stageTransitionFX!: StageTransitionFX;
@@ -173,8 +187,15 @@ export class GameScene extends Phaser.Scene {
 
     // VFX systems
     HitVFX.ensureTextures(this);
+    ShatterVFX.ensureTextures(this);
     this.stageTransitionFX = new StageTransitionFX(this, this.car);
     this.nearMissVFX = new NearMissVFX(this);
+
+    // Projectile system
+    this.projectileSystem = new ProjectileSystem(this);
+
+    // Super Saiyan system
+    this.superSaiyanSystem = new SuperSaiyanSystem();
 
     // Audio
     this.audio = new AudioManager(this);
@@ -202,6 +223,12 @@ export class GameScene extends Phaser.Scene {
     this.shieldGfx = this.add.graphics();
     this.shieldGfx.setDepth(9);
     this.drawShieldArc();
+
+    // Create bubble shield graphics (SS)
+    this.bubbleGfx = this.add.graphics();
+    this.bubbleGfx.setDepth(9);
+    this.bubbleGfx.setVisible(false);
+    this.bubbleVisible = false;
   }
 
   update(_time: number, delta: number): void {
@@ -244,9 +271,24 @@ export class GameScene extends Phaser.Scene {
     this.powerupManager.update(dt);
     this.lootManager.update(dt, this.meteorManager.meteors, this.car.x);
 
-    // Meteor collisions — skip penalties during ultimate
+    // Meteor collisions — skip penalties during ultimate or SS shield
     if (!this.ultimateSystem.active) {
       for (const meteor of this.meteorManager.meteors) {
+        if (this.superSaiyanSystem.active) {
+          // Infinite shield absorbs all: just mark collision, play minor VFX
+          if (!meteor.hasCollided && !this.car.invincible) {
+            const dx = this.car.x - meteor.x;
+            const dy = this.car.y - meteor.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < this.car.hitRadius + meteor.hitRadius) {
+              meteor.hasCollided = true;
+              HitVFX.spawnImpactStar(this, this.car.x, this.car.y);
+              HitVFX.jiggleCar(this, this.car);
+            }
+          }
+          continue;
+        }
+
         const result = this.collisionSystem.checkMeteor(this.car, meteor);
         if (result) {
           if (result.shieldHit) {
@@ -294,6 +336,19 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // Projectile system: fire + collide with meteors
+    const projHits = this.projectileSystem.update(
+      dt, this.car.x, this.car.y, this.meteorManager.meteors,
+    );
+    for (const hit of projHits) {
+      if (hit.destroyed) {
+        ShatterVFX.spawn(this, hit.x, hit.y, hit.meteor.diameter);
+        hit.meteor.destroy();
+        const idx = this.meteorManager.meteors.indexOf(hit.meteor);
+        if (idx !== -1) this.meteorManager.meteors.splice(idx, 1);
+      }
+    }
+
     // Near-miss scoring + VFX
     const nearMissEvents = this.scoreSystem.update(this.car, this.meteorManager.meteors);
     for (const evt of nearMissEvents) {
@@ -311,10 +366,44 @@ export class GameScene extends Phaser.Scene {
       this.scoreSystem.comboLevel = 0;
     }
 
+    // Super Saiyan shield countdown
+    const ssWasActive = this.superSaiyanSystem.active;
+    this.superSaiyanSystem.update(delta);
+    const ssNowActive = this.superSaiyanSystem.active;
+
+    // SS bubble pop-in on activation
+    if (!ssWasActive && ssNowActive && this.bubbleGfx) {
+      this.bubbleGfx.setScale(0.8);
+      this.tweens.add({
+        targets: this.bubbleGfx,
+        scaleX: 1, scaleY: 1,
+        duration: 150,
+        ease: 'Back.easeOut',
+      });
+    }
+
+    // SS bubble fade-out when shield ends entirely
+    if (ssWasActive && !ssNowActive && this.bubbleGfx) {
+      this.bubbleVisible = false;
+      this.tweens.add({
+        targets: this.bubbleGfx,
+        alpha: 0,
+        duration: 200,
+        onComplete: () => { this.bubbleGfx?.setVisible(false); },
+      });
+    }
+
     // Update shield arc position + pulse
     this.shieldTime += dt;
     if (this.shieldFlareTimer > 0) this.shieldFlareTimer -= dt;
-    this.drawShieldArc();
+
+    // Swap: bubble when SS active, normal arc otherwise
+    if (ssNowActive) {
+      this.shieldGfx?.setVisible(false);
+      this.drawBubbleShield();
+    } else {
+      this.drawShieldArc();
+    }
 
     this.updateHUD();
   }
@@ -338,6 +427,16 @@ export class GameScene extends Phaser.Scene {
       ruby: this.rubyCount,
       ultimateActive: this.ultimateSystem.active,
       ultimateProgress: this.ultimateSystem.progress,
+      ammoLevel: this.projectileSystem.ammoLevel,
+      availableAmmoLevel: Math.min(
+        Math.floor(this.goldCount / AMMO_UPGRADE_COST),
+        AMMO_MAX_LEVEL - this.projectileSystem.ammoLevel,
+      ),
+      ssUnlockedLevel: SuperSaiyanSystem.unlockedLevel(this.diamondCount),
+      ssRunning: this.superSaiyanSystem.running,
+      ssShieldActive: this.superSaiyanSystem.active,
+      ssRemainingMs: this.superSaiyanSystem.remainingTime,
+      ssTotalCharges: this.superSaiyanSystem.totalCharges,
     });
   }
 
@@ -361,6 +460,8 @@ export class GameScene extends Phaser.Scene {
 
     this.car.sprite.setVisible(false);
     this.shieldGfx?.setVisible(false);
+    this.bubbleGfx?.setVisible(false);
+    this.bubbleVisible = false;
     this.cameras.main.shake(200, 0.02);
     this.audio.playCrash();
 
@@ -371,6 +472,22 @@ export class GameScene extends Phaser.Scene {
   private showGameOver(): void {
     this.audio.playGameOver();
     this.hud.showGameOver(this.scoreSystem.comboLevel, this.stageSystem.stage);
+  }
+
+  upgradeAmmunition(): void {
+    if (this.goldCount < AMMO_UPGRADE_COST) return;
+    if (this.projectileSystem.ammoLevel >= AMMO_MAX_LEVEL) return;
+    this.goldCount -= AMMO_UPGRADE_COST;
+    this.projectileSystem.ammoLevel++;
+    this.updateHUD();
+  }
+
+  activateSuperSaiyan(): void {
+    if (this.superSaiyanSystem.running) return;
+    if (this.diamondCount < SS_DIAMOND_LV1) return;
+    this.diamondCount -= SS_DIAMOND_LV1; // costs 5 diamonds
+    this.superSaiyanSystem.activate(this.diamondCount + SS_DIAMOND_LV1); // pass pre-deduction count for level calc
+    this.updateHUD();
   }
 
   restartGame(): void {
@@ -388,6 +505,8 @@ export class GameScene extends Phaser.Scene {
     this.scoreSystem.reset();
     this.stageSystem.reset();
     this.ultimateSystem.reset();
+    this.projectileSystem.reset();
+    this.superSaiyanSystem.reset();
     this.difficultyManager.pickForStage(1);
     this.gameOver = false;
     this.freezeTimer = 0;
@@ -401,8 +520,10 @@ export class GameScene extends Phaser.Scene {
     this.nearMissVFX.reset();
     this.car.inputDisabled = false;
 
-    // Re-show shield arc
+    // Re-show shield arc, hide bubble
     this.shieldGfx?.setVisible(true);
+    this.bubbleGfx?.setVisible(false);
+    this.bubbleVisible = false;
     this.drawShieldArc();
 
     this.updateHUD();
@@ -481,6 +602,49 @@ export class GameScene extends Phaser.Scene {
     this.shieldGfx.beginPath();
     this.shieldGfx.arc(cx, cy, SHIELD_ARC_RADIUS, startAngle, endAngle, false);
     this.shieldGfx.strokePath();
+  }
+
+  private drawBubbleShield(): void {
+    if (!this.bubbleGfx) return;
+    this.bubbleGfx.clear();
+
+    if (!this.superSaiyanSystem.active) {
+      this.bubbleGfx.setVisible(false);
+      this.bubbleVisible = false;
+      return;
+    }
+
+    this.bubbleGfx.setVisible(true);
+    this.bubbleVisible = true;
+
+    const cx = this.car.x;
+    const cy = this.car.y;
+
+    // Shimmer: oscillate alpha between 0.55 and 0.8
+    const shimmer = 0.675 + 0.125 * Math.sin(this.shieldTime * SS_BUBBLE_PULSE_SPEED);
+    this.bubbleGfx.setAlpha(shimmer);
+
+    // Draw concentric rings from outer to inner with decreasing alpha
+    // This creates an "inward diffusion" glow effect
+    const outerR = SS_BUBBLE_RADIUS;
+    const innerR = SS_BUBBLE_RADIUS * 0.45; // fade zone
+    const n = SS_BUBBLE_RINGS;
+
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1); // 0 = outermost, 1 = innermost
+      const r = outerR - t * (outerR - innerR);
+      const alpha = 0.35 * (1 - t); // 0.35 at edge → 0 at center
+      this.bubbleGfx.lineStyle(2, 0x44eeff, alpha);
+      this.bubbleGfx.strokeCircle(cx, cy, r);
+    }
+
+    // Bright outer edge ring
+    this.bubbleGfx.lineStyle(1.5, 0x88ffff, 0.6);
+    this.bubbleGfx.strokeCircle(cx, cy, outerR);
+
+    // Secondary glow just inside the edge
+    this.bubbleGfx.lineStyle(2.5, 0x22ccff, 0.2);
+    this.bubbleGfx.strokeCircle(cx, cy, outerR - 2);
   }
 
   private playShieldHitEffect(): void {

@@ -15,6 +15,13 @@ export interface HUDState {
   ruby: number;
   ultimateActive: boolean;
   ultimateProgress: number;
+  ammoLevel: number;          // 0 = not equipped, 1–3 = equipped levels
+  availableAmmoLevel: number;  // how many ammo upgrades purchasable right now
+  ssUnlockedLevel: number;     // 0, 1, or 2
+  ssRunning: boolean;
+  ssShieldActive: boolean;
+  ssRemainingMs: number;
+  ssTotalCharges: number;
 }
 
 /**
@@ -45,6 +52,23 @@ export class HUD {
   private settingsPanel: HTMLElement;
   private shieldEl: HTMLElement;
   private shieldTicks: HTMLElement[] = [];
+
+  // Equip UI
+  private equipBtn: HTMLElement;
+  private equipBadge: HTMLElement;
+  private equipPanel: HTMLElement;
+  private ammoBtn: HTMLButtonElement;
+  private ssBtn: HTMLButtonElement;
+  private ammoLabel: HTMLElement;
+  private ssLabel: HTMLElement;
+
+  // SS status indicator (top-left, below shield bar)
+  private ssStatusEl: HTMLElement;
+
+  // Badge pulse tracking (gold: multiples of 10, diamond: multiples of 5)
+  private prevGoldTens = 0;
+  private prevDiamondFives = 0;
+  private prevRubyTens = 0;
 
   // Game over overlay
   private gameOverEl: HTMLElement;
@@ -112,6 +136,10 @@ export class HUD {
       this.shieldTicks.push(tick);
     }
 
+    // SS status indicator (below shield bar, hidden by default)
+    this.ssStatusEl = this.el('div', 'ss-status', stats);
+    this.ssStatusEl.style.display = 'none';
+
     // ── Right-side bars wrapper ──
     const barsWrapper = this.el('div', 'hud-bars-right', container);
 
@@ -164,6 +192,59 @@ export class HUD {
           this.panelOpen = false;
           this.settingsPanel.style.display = 'none';
         }
+      }
+    });
+
+    // ── Equip UI (bottom-right) ──
+    const equipArea = this.el('div', 'equip-area', container);
+
+    this.equipBtn = this.el('button', 'equip-btn', equipArea);
+    this.equipBtn.textContent = '\u2692'; // ⚒
+    this.equipBtn.addEventListener('click', () => this.toggleEquipPanel());
+
+    this.equipBadge = this.el('span', 'equip-badge', this.equipBtn);
+    this.equipBadge.style.display = 'none';
+
+    this.equipPanel = this.el('div', 'equip-panel', equipArea);
+    this.equipPanel.style.display = 'none';
+
+    const epTitle = this.el('div', 'ep-title', this.equipPanel);
+    epTitle.textContent = 'EQUIP';
+
+    // Ammunition button
+    this.ammoBtn = document.createElement('button');
+    this.ammoBtn.className = 'ep-item-btn';
+    this.ammoBtn.addEventListener('click', () => {
+      this.scene.upgradeAmmunition();
+      this.equipPanel.style.display = 'none';
+    });
+    this.equipPanel.appendChild(this.ammoBtn);
+
+    const ammoIcon = this.el('span', 'ep-item-icon', this.ammoBtn);
+    ammoIcon.textContent = '\u{1F4A5}'; // 💥
+    this.ammoLabel = this.el('span', 'ep-item-label', this.ammoBtn);
+    this.ammoLabel.textContent = 'Ammunition (10G)';
+
+    // Super Saiyan button
+    this.ssBtn = document.createElement('button');
+    this.ssBtn.className = 'ep-item-btn';
+    this.ssBtn.disabled = true;
+    this.ssBtn.addEventListener('click', () => {
+      this.scene.activateSuperSaiyan();
+      this.equipPanel.style.display = 'none';
+    });
+    this.equipPanel.appendChild(this.ssBtn);
+
+    const ssIcon = this.el('span', 'ep-item-icon', this.ssBtn);
+    ssIcon.textContent = '\u26A1'; // ⚡
+    this.ssLabel = this.el('span', 'ep-item-label', this.ssBtn);
+    this.ssLabel.textContent = 'Super Saiyan (5D)';
+
+    // Close equip panel on outside click (pointerdown reliably fires from canvas)
+    document.addEventListener('pointerdown', (e) => {
+      const target = e.target as HTMLElement;
+      if (!equipArea.contains(target) && this.equipPanel.style.display !== 'none') {
+        this.equipPanel.style.display = 'none';
       }
     });
 
@@ -230,6 +311,78 @@ export class HUD {
 
     this.diffLabel.textContent = state.difficultyLabel;
 
+    // Equip button visibility: show when gold >= 10 or ammo already equipped
+    // Equip button is always visible
+
+    // Badge: count of available upgrades
+    const ammoUps = state.availableAmmoLevel; // already capped by GameScene
+    const ssAvail = (!state.ssRunning && state.ssUnlockedLevel > 0) ? 1 : 0;
+    const badgeCount = ammoUps + ssAvail;
+    if (badgeCount > 0) {
+      this.equipBadge.textContent = String(badgeCount);
+      this.equipBadge.style.display = '';
+    } else {
+      this.equipBadge.style.display = 'none';
+    }
+
+    // Badge pulse when any loot crosses a multiple of 10
+    const gTens = Math.floor(state.gold / 10);
+    const dFives = Math.floor(state.diamond / 5);
+    const rTens = Math.floor(state.ruby / 10);
+    if (gTens > this.prevGoldTens || dFives > this.prevDiamondFives || rTens > this.prevRubyTens) {
+      this.equipBadge.classList.remove('equip-badge-pulse');
+      // Force reflow to restart animation
+      void this.equipBadge.offsetWidth;
+      this.equipBadge.classList.add('equip-badge-pulse');
+    }
+    this.prevGoldTens = gTens;
+    this.prevDiamondFives = dFives;
+    this.prevRubyTens = rTens;
+
+    // Ammo button state (3 levels)
+    const intervalLabels: Record<number, string> = { 1: '0.5s', 2: '0.1s', 3: '0.1s Wt' };
+    if (state.ammoLevel === 0 && state.gold < 10) {
+      this.ammoBtn.disabled = true;
+      this.ammoLabel.textContent = 'Ammunition (need 10G)';
+    } else if (state.ammoLevel === 0 && state.gold >= 10) {
+      this.ammoBtn.disabled = false;
+      this.ammoLabel.textContent = 'Ammunition (Equip)';
+    } else if (state.ammoLevel >= 3) {
+      this.ammoBtn.disabled = true;
+      this.ammoLabel.textContent = 'Ammo Lv3/3 MAX';
+    } else if (state.gold >= 10) {
+      this.ammoBtn.disabled = false;
+      this.ammoLabel.textContent = `Ammo Lv${state.ammoLevel}/3 \u2192 Lv${state.ammoLevel + 1}`;
+    } else {
+      this.ammoBtn.disabled = true;
+      this.ammoLabel.textContent = `Ammo Lv${state.ammoLevel}/3 (${intervalLabels[state.ammoLevel] ?? ''})`;
+    }
+
+    // Super Saiyan button state
+    if (state.ssRunning) {
+      this.ssBtn.disabled = true;
+      this.ssLabel.textContent = 'Super Saiyan (Active)';
+    } else if (state.ssUnlockedLevel >= 2) {
+      this.ssBtn.disabled = false;
+      this.ssLabel.textContent = 'Super Saiyan (Lv 2)';
+    } else if (state.ssUnlockedLevel >= 1) {
+      this.ssBtn.disabled = false;
+      this.ssLabel.textContent = 'Super Saiyan (Lv 1)';
+    } else {
+      this.ssBtn.disabled = true;
+      this.ssLabel.textContent = 'Super Saiyan (need 5D)';
+    }
+
+    // SS status indicator
+    if (state.ssShieldActive) {
+      const secs = Math.ceil(state.ssRemainingMs / 1000);
+      const chargeInfo = state.ssTotalCharges > 1 ? ` [${state.ssTotalCharges}]` : '';
+      this.ssStatusEl.textContent = `SAIYAN SHIELD: ${secs}s${chargeInfo}`;
+      this.ssStatusEl.style.display = '';
+    } else {
+      this.ssStatusEl.style.display = 'none';
+    }
+
     // Shield status text
     const lvl = state.shieldLevel;
     const active = lvl > 0;
@@ -266,6 +419,13 @@ export class HUD {
     // Prevent double-click
     this.retryBtn.disabled = true;
     this.scene.restartGame();
+  }
+
+  // ── Equip panel ──
+
+  private toggleEquipPanel(): void {
+    const open = this.equipPanel.style.display !== 'none';
+    this.equipPanel.style.display = open ? 'none' : 'flex';
   }
 
   // ── Panel ──
