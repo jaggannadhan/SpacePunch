@@ -1,0 +1,5 @@
+[
+  { "id": "spanner", "name": "Spanner", "file": "spanner.png" },
+  { "id": "screwdriver", "name": "Screwdriver", "file": "screwdriver.png" },
+  { "id": "wrench", "name": "Wrench", "file": "wrench.png" }
+]

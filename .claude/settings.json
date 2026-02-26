@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm install phaser@3.80.1)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(./node_modules/.bin/vite build)",
+      "Bash(python3 -c \"from PIL import Image; print\\(''ok''\\)\")",
+      "Bash(magick identify /Users/jv/Documents/MyProjects/SpacePunch/src/assets/skins/spaceship1.png /Users/jv/Documents/MyProjects/SpacePunch/src/assets/skins/spaceship2.png)",
+      "Bash(npx vite build)"
+    ]
+  }
+}

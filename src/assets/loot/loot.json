@@ -1,0 +1,5 @@
+[
+  { "id": "gold", "name": "Gold", "file": "gold.png" },
+  { "id": "diamond", "name": "Diamond", "file": "diamond.png" },
+  { "id": "ruby", "name": "Ruby", "file": "ruby.png" }
+]

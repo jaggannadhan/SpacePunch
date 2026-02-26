@@ -1,0 +1,10 @@
+[
+  { "id": "default", "name": "Default", "file": "ship_default.png" },
+  { "id": "spaceship1", "name": "Starship", "file": "spaceship1.png" },
+  { "id": "spaceship2", "name": "Vanguard", "file": "spaceship2.png" },
+  { "id": "red", "name": "Crimson", "file": "ship_red.png" },
+  { "id": "blue", "name": "Azure", "file": "ship_blue.png" },
+  { "id": "green", "name": "Emerald", "file": "ship_green.png" },
+  { "id": "gold", "name": "Solar", "file": "ship_gold.png" },
+  { "id": "purple", "name": "Nebula", "file": "ship_purple.png" }
+]

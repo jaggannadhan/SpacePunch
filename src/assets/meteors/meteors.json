@@ -1,0 +1,7 @@
+[
+  { "id": "m1", "name": "Rock 1", "file": "meteor_1.png" },
+  { "id": "m2", "name": "Rock 2", "file": "meteor_2.png" },
+  { "id": "m3", "name": "Rock 3", "file": "meteor_3.png" },
+  { "id": "m4", "name": "Rock 4", "file": "meteor_4.png" },
+  { "id": "m5", "name": "Rock 5", "file": "meteor_5.png" }
+]
