@@ -75,12 +75,12 @@ Activate with 5 diamonds for a timed infinite shield:
 While active, a cyan bubble shield absorbs all damage. Costs 5 diamonds per use, reusable whenever you have enough.
 
 ### Ultra Saiyan Mode
-Unlocked with 2 rubies. Adds multi-directional cannon fire on top of existing ammunition:
+Unlocked with 2 rubies. Each equip or upgrade costs 2 rubies.
 - **Level 1** — Fires NW + NE diagonal shots at 0.1s interval
 - **Level 2** — Fires in all 8 directions (N/S/E/W + diagonals) at 0.1s, red bolts dealing 0.25 damage each
-- **Level 3** — Coming soon
+- **Level 3** — **Plasma Shockwave**: replaces cannon fire with an expanding blue ring that pulses every 1s. Instantly destroys small meteors and halves big meteor HP.
 
-Upgrading is free once unlocked — just click in the equip panel. Both ammunition and Ultra Saiyan fire independently.
+Ammunition and Ultra Saiyan fire independently (Lv1–2). At Lv3, directional cannons are replaced by the shockwave.
 
 ### Difficulty
 Each stage picks a difficulty via weighted random:

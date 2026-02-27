@@ -345,8 +345,7 @@ export class HUD {
     // Badge: count of available upgrades
     const ammoUps = state.availableAmmoLevel; // already capped by GameScene
     const ssAvail = (!state.ssRunning && state.ssUnlockedLevel > 0) ? 1 : 0;
-    const usAvail = (state.ultraEnabled && state.ultraLevel === 0) ? 1 :
-                    (state.ultraLevel === 1) ? 1 : 0;
+    const usAvail = (state.ultraEnabled && state.ultraLevel < 3) ? 1 : 0;
     const badgeCount = ammoUps + ssAvail + usAvail;
     if (badgeCount > 0) {
       this.equipBadge.textContent = String(badgeCount);
@@ -404,15 +403,18 @@ export class HUD {
     }
 
     // Ultra Saiyan button state
-    if (state.ultraLevel >= 2) {
+    if (state.ultraLevel >= 3) {
       this.usBtn.disabled = true;
-      this.usLabel.textContent = 'Ultra Lv2/3 (Lv3 Soon)';
-    } else if (state.ultraLevel === 1) {
+      this.usLabel.textContent = 'Ultra Lv3/3 MAX';
+    } else if (state.ultraLevel > 0 && state.ultraEnabled) {
       this.usBtn.disabled = false;
-      this.usLabel.textContent = 'Ultra Lv1/3 \u2192 Lv2';
+      this.usLabel.textContent = `Ultra Lv${state.ultraLevel}/3 \u2192 Lv${state.ultraLevel + 1} (2R)`;
+    } else if (state.ultraLevel > 0) {
+      this.usBtn.disabled = true;
+      this.usLabel.textContent = `Ultra Lv${state.ultraLevel}/3 (need 2R)`;
     } else if (state.ultraEnabled) {
       this.usBtn.disabled = false;
-      this.usLabel.textContent = 'Ultra Saiyan (Equip)';
+      this.usLabel.textContent = 'Ultra Saiyan (Equip 2R)';
     } else {
       this.usBtn.disabled = true;
       this.usLabel.textContent = 'Ultra Saiyan (need 2R)';

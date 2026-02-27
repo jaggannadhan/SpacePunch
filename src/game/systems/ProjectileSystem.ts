@@ -89,8 +89,8 @@ export class ProjectileSystem {
       }
     }
 
-    // Ultra auto-fire timer
-    if (this.ultraLevel > 0) {
+    // Ultra auto-fire timer (disabled at lv3 — replaced by plasma shockwave)
+    if (this.ultraLevel > 0 && this.ultraLevel < 3) {
       this.ultraFireTimer -= dt * 1000;
       if (this.ultraFireTimer <= 0) {
         this.fireUltra(carX, carY);

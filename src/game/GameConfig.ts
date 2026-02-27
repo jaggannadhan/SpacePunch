@@ -148,6 +148,12 @@ export const ULTRA_LV2_DAMAGE = 0.25;        // same as weighted ammo
 export const ULTRA_MUZZLE_DIST = 14;         // spawn offset from car center
 export const MAX_PROJECTILES = 250;          // performance cap
 
+// ── Plasma Shockwave (Ultra Lv3) ──
+export const SHOCKWAVE_INTERVAL_MS = 1000;      // 1s between pulses
+export const SHOCKWAVE_MAX_RADIUS = 160;        // max expansion radius px
+export const SHOCKWAVE_EXPAND_MS = 400;         // ring expansion duration
+export const SHOCKWAVE_RING_COLOR = 0x44aaff;   // blue tint
+
 // ── Super Saiyan ──
 export const SS_DIAMOND_LV1 = 5;   // diamonds needed to unlock level 1
 export const SS_DIAMOND_LV2 = 10;  // diamonds needed to unlock level 2

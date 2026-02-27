@@ -20,6 +20,7 @@ import { LootManager } from '../systems/LootManager';
 import { UltimateModeSystem } from '../systems/UltimateModeSystem';
 import { ProjectileSystem } from '../systems/ProjectileSystem';
 import { ShatterVFX } from '../vfx/ShatterVFX';
+import { PlasmaShockwave } from '../vfx/PlasmaShockwave';
 import { SuperSaiyanSystem } from '../systems/SuperSaiyanSystem';
 import { Loot, type LootType } from '../entities/Loot';
 import {
@@ -87,6 +88,7 @@ export class GameScene extends Phaser.Scene {
   private stageSystem!: StageSystem;
   private ultimateSystem!: UltimateModeSystem;
   private projectileSystem!: ProjectileSystem;
+  private plasmaShockwave!: PlasmaShockwave;
   private superSaiyanSystem!: SuperSaiyanSystem;
   hud!: HUD;
 
@@ -195,6 +197,9 @@ export class GameScene extends Phaser.Scene {
 
     // Projectile system
     this.projectileSystem = new ProjectileSystem(this);
+
+    // Plasma shockwave (Ultra Lv3)
+    this.plasmaShockwave = new PlasmaShockwave(this);
 
     // Super Saiyan system
     this.superSaiyanSystem = new SuperSaiyanSystem();
@@ -355,6 +360,24 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // Plasma shockwave (Ultra Lv3): expanding ring that destroys/halves meteors
+    if (this.projectileSystem.ultraLevel >= 3) {
+      const swHits = this.plasmaShockwave.update(
+        dt, this.car.x, this.car.y, this.meteorManager.meteors,
+      );
+      for (const hit of swHits) {
+        if (hit.destroyed) {
+          ShatterVFX.spawn(this, hit.x, hit.y, hit.meteor.diameter);
+          if (hit.meteor.diameter >= BIG_METEOR_RUBY_THRESHOLD && Math.random() < RUBY_DROP_CHANCE) {
+            this.spawnRubyDrop(hit.x, hit.y);
+          }
+          hit.meteor.destroy();
+          const idx = this.meteorManager.meteors.indexOf(hit.meteor);
+          if (idx !== -1) this.meteorManager.meteors.splice(idx, 1);
+        }
+      }
+    }
+
     // Near-miss scoring + VFX
     const nearMissEvents = this.scoreSystem.update(this.car, this.meteorManager.meteors);
     for (const evt of nearMissEvents) {
@@ -499,8 +522,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   upgradeUltraSaiyan(): void {
-    if (this.projectileSystem.ultraLevel >= 2) return; // lv3 is coming soon
-    if (this.projectileSystem.ultraLevel === 0 && this.rubyCount < ULTRA_RUBY_GATE) return;
+    if (this.projectileSystem.ultraLevel >= 3) return; // max level
+    if (this.rubyCount < ULTRA_RUBY_GATE) return;      // need 2 rubies
+    this.rubyCount -= ULTRA_RUBY_GATE;                  // spend rubies
     this.projectileSystem.ultraLevel++;
     this.updateHUD();
   }
@@ -521,6 +545,7 @@ export class GameScene extends Phaser.Scene {
     this.stageSystem.reset();
     this.ultimateSystem.reset();
     this.projectileSystem.reset();
+    this.plasmaShockwave.clearAll();
     this.superSaiyanSystem.reset();
     this.difficultyManager.pickForStage(1);
     this.gameOver = false;
