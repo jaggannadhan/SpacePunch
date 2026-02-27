@@ -30,6 +30,10 @@ import {
   BIG_METEOR_RUBY_THRESHOLD, RUBY_DROP_CHANCE, RUBY_LIFETIME_MS,
   LOOT_RENDER_SIZE, ULTRA_RUBY_GATE,
 } from '../GameConfig';
+import {
+  NEAR_MISS_WEIGHT, METEOR_BLAST_SMALL, METEOR_BLAST_BIG,
+  GOLD_PICKUP, DIAMOND_PICKUP, RUBY_PICKUP, SHIELD_PICKUP,
+} from '../systems/ScoreWeights';
 import powerupsManifest from '../../assets/powerups/powerups.json';
 import lootManifest from '../../assets/loot/loot.json';
 
@@ -100,6 +104,7 @@ export class GameScene extends Phaser.Scene {
   private goldCount = 0;
   private diamondCount = 0;
   private rubyCount = 0;
+  private totalScore = 0;
 
   private stars: Phaser.GameObjects.Arc[][] = [];
   private meteorTextureKeys: string[] = [];
@@ -218,6 +223,7 @@ export class GameScene extends Phaser.Scene {
     this.goldCount = 0;
     this.diamondCount = 0;
     this.rubyCount = 0;
+    this.totalScore = 0;
 
     this.difficultyManager.pickForStage(1);
     this.updateHUD();
@@ -323,6 +329,7 @@ export class GameScene extends Phaser.Scene {
     for (const powerup of this.powerupManager.powerups) {
       const result = this.collisionSystem.checkPowerup(this.car, powerup);
       if (result?.collected) {
+        this.totalScore += SHIELD_PICKUP;
         this.playPowerupCollectEffect(powerup.x, powerup.y);
       }
     }
@@ -349,6 +356,7 @@ export class GameScene extends Phaser.Scene {
     );
     for (const hit of projHits) {
       if (hit.destroyed) {
+        this.totalScore += hit.meteor.isBig ? METEOR_BLAST_BIG : METEOR_BLAST_SMALL;
         ShatterVFX.spawn(this, hit.x, hit.y, hit.meteor.diameter);
         // Ruby drop from big meteor kills
         if (hit.meteor.diameter >= BIG_METEOR_RUBY_THRESHOLD && Math.random() < RUBY_DROP_CHANCE) {
@@ -367,6 +375,7 @@ export class GameScene extends Phaser.Scene {
       );
       for (const hit of swHits) {
         if (hit.destroyed) {
+          this.totalScore += hit.meteor.isBig ? METEOR_BLAST_BIG : METEOR_BLAST_SMALL;
           ShatterVFX.spawn(this, hit.x, hit.y, hit.meteor.diameter);
           if (hit.meteor.diameter >= BIG_METEOR_RUBY_THRESHOLD && Math.random() < RUBY_DROP_CHANCE) {
             this.spawnRubyDrop(hit.x, hit.y);
@@ -381,6 +390,7 @@ export class GameScene extends Phaser.Scene {
     // Near-miss scoring + VFX
     const nearMissEvents = this.scoreSystem.update(this.car, this.meteorManager.meteors);
     for (const evt of nearMissEvents) {
+      this.totalScore += evt.combo * NEAR_MISS_WEIGHT;
       this.nearMissVFX.spawn(evt.x, evt.y, evt.combo);
       this.hud.flashComboDelta(evt.combo);
     }
@@ -468,6 +478,7 @@ export class GameScene extends Phaser.Scene {
       ssTotalCharges: this.superSaiyanSystem.totalCharges,
       ultraLevel: this.projectileSystem.ultraLevel,
       ultraEnabled: this.rubyCount >= ULTRA_RUBY_GATE,
+      totalScore: this.totalScore,
     });
   }
 
@@ -502,7 +513,7 @@ export class GameScene extends Phaser.Scene {
 
   private showGameOver(): void {
     this.audio.playGameOver();
-    this.hud.showGameOver(this.scoreSystem.comboLevel, this.stageSystem.stage);
+    this.hud.showGameOver(this.stageSystem.stage, this.totalScore);
   }
 
   upgradeAmmunition(): void {
@@ -555,6 +566,7 @@ export class GameScene extends Phaser.Scene {
     this.goldCount = 0;
     this.diamondCount = 0;
     this.rubyCount = 0;
+    this.totalScore = 0;
 
     // Reset VFX
     this.nearMissVFX.reset();
@@ -721,9 +733,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private collectLoot(type: LootType, lx: number, ly: number): void {
-    if (type === 'gold') this.goldCount++;
-    else if (type === 'diamond') this.diamondCount++;
-    else if (type === 'ruby') this.rubyCount++;
+    if (type === 'gold') { this.goldCount++; this.totalScore += GOLD_PICKUP; }
+    else if (type === 'diamond') { this.diamondCount++; this.totalScore += DIAMOND_PICKUP; }
+    else if (type === 'ruby') { this.rubyCount++; this.totalScore += RUBY_PICKUP; }
 
     // Color per type
     const colors: Record<LootType, { text: string; hex: number }> = {

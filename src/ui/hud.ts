@@ -2,6 +2,10 @@ import { settingsStore } from '../game/systems/SettingsStore';
 import type { GameScene, SkinEntry } from '../game/scenes/GameScene';
 import skinsManifest from '../assets/skins/skins.json';
 import lootManifest from '../assets/loot/loot.json';
+import {
+  loadLeaderboard, saveLeaderboardEntry, type LeaderboardEntry,
+} from '../game/systems/LeaderboardService';
+
 export interface HUDState {
   timer: string;
   stage: number;
@@ -22,8 +26,9 @@ export interface HUDState {
   ssShieldActive: boolean;
   ssRemainingMs: number;
   ssTotalCharges: number;
-  ultraLevel: number;      // 0 = not equipped, 1–2 active, 3 = coming soon
+  ultraLevel: number;      // 0 = not equipped, 1–3 active
   ultraEnabled: boolean;   // rubyCount >= 2
+  totalScore: number;
 }
 
 /**
@@ -66,6 +71,9 @@ export class HUD {
   private ssLabel: HTMLElement;
   private usLabel: HTMLElement;
 
+  // Live score display (below shield bar)
+  private scoreEl!: HTMLElement;
+
   // SS status indicator (top-left, below shield bar)
   private ssStatusEl: HTMLElement;
 
@@ -76,9 +84,16 @@ export class HUD {
 
   // Game over overlay
   private gameOverEl: HTMLElement;
-  private goPoints: HTMLElement;
+  private goScore!: HTMLElement;
   private goStage: HTMLElement;
   private retryBtn: HTMLButtonElement;
+
+  // Leaderboard UI (inside game over)
+  private goLbBody!: HTMLElement;
+  private goNameInput!: HTMLInputElement;
+  private goEmailInput!: HTMLInputElement;
+  private goSaveBtn!: HTMLButtonElement;
+  private goSaveStatus!: HTMLElement;
 
   private panelOpen = false;
 
@@ -149,7 +164,11 @@ export class HUD {
       this.shieldTicks.push(tick);
     }
 
-    // SS status indicator (below shield bar, hidden by default)
+    // Score display (below shield bar)
+    this.scoreEl = this.el('div', 'hud-score', stats);
+    this.scoreEl.textContent = 'Score: 0';
+
+    // SS status indicator (below score, hidden by default)
     this.ssStatusEl = this.el('div', 'ss-status', stats);
     this.ssStatusEl.style.display = 'none';
 
@@ -281,8 +300,37 @@ export class HUD {
     this.gameOverEl.style.display = 'none';
 
     this.el('div', 'go-title', this.gameOverEl).textContent = 'GAME OVER';
-    this.goPoints = this.el('div', 'go-points', this.gameOverEl);
     this.goStage = this.el('div', 'go-stage', this.gameOverEl);
+    this.goScore = this.el('div', 'go-score', this.gameOverEl);
+
+    // ── Leaderboard section ──
+    const lbSection = this.el('div', 'go-lb-section', this.gameOverEl);
+    this.el('div', 'go-lb-title', lbSection).textContent = 'LEADERBOARD';
+    this.goLbBody = this.el('div', 'go-lb-body', lbSection);
+
+    // ── Save score form ──
+    const saveForm = this.el('div', 'go-save-form', this.gameOverEl);
+
+    this.goNameInput = document.createElement('input');
+    this.goNameInput.className = 'go-input';
+    this.goNameInput.placeholder = 'Name (required)';
+    this.goNameInput.maxLength = 30;
+    saveForm.appendChild(this.goNameInput);
+
+    this.goEmailInput = document.createElement('input');
+    this.goEmailInput.className = 'go-input';
+    this.goEmailInput.placeholder = 'Email (optional)';
+    this.goEmailInput.type = 'email';
+    this.goEmailInput.maxLength = 60;
+    saveForm.appendChild(this.goEmailInput);
+
+    this.goSaveBtn = document.createElement('button');
+    this.goSaveBtn.className = 'go-save-btn';
+    this.goSaveBtn.textContent = 'Save Score';
+    this.goSaveBtn.addEventListener('click', () => this.handleSaveScore());
+    saveForm.appendChild(this.goSaveBtn);
+
+    this.goSaveStatus = this.el('div', 'go-save-status', saveForm);
 
     // Retry button
     this.retryBtn = document.createElement('button');
@@ -430,6 +478,9 @@ export class HUD {
       this.ssStatusEl.style.display = 'none';
     }
 
+    // Live score
+    this.scoreEl.textContent = `Score: ${state.totalScore}`;
+
     // Shield status text
     const lvl = state.shieldLevel;
     const active = lvl > 0;
@@ -451,11 +502,21 @@ export class HUD {
     }
   }
 
-  showGameOver(comboLevel: number, stage: number): void {
+  private currentGoScore = 0;
+
+  showGameOver(stage: number, totalScore: number): void {
+    this.currentGoScore = totalScore;
     this.gameOverEl.style.display = 'flex';
-    this.goPoints.textContent = `Combo: ${comboLevel}`;
     this.goStage.textContent = `Stage: ${stage}`;
+    this.goScore.textContent = `Score: ${totalScore}`;
     this.retryBtn.disabled = false;
+    this.goSaveBtn.disabled = false;
+    this.goSaveStatus.textContent = '';
+    this.goNameInput.value = '';
+    this.goEmailInput.value = '';
+
+    // Load and display leaderboard
+    loadLeaderboard().then(entries => this.renderLeaderboard(entries));
   }
 
   hideGameOver(): void {
@@ -463,9 +524,65 @@ export class HUD {
   }
 
   private handleRetry(): void {
-    // Prevent double-click
     this.retryBtn.disabled = true;
     this.scene.restartGame();
+  }
+
+  private async handleSaveScore(): Promise<void> {
+    const name = this.goNameInput.value.trim();
+    if (!name) {
+      this.goSaveStatus.textContent = 'Name is required.';
+      this.goSaveStatus.style.color = '#ff6644';
+      return;
+    }
+
+    const email = this.goEmailInput.value.trim();
+    if (email && (!email.includes('@') || !email.includes('.'))) {
+      this.goSaveStatus.textContent = 'Invalid email.';
+      this.goSaveStatus.style.color = '#ff6644';
+      return;
+    }
+
+    this.goSaveBtn.disabled = true;
+    this.goSaveStatus.textContent = 'Saving...';
+    this.goSaveStatus.style.color = '#aaa';
+
+    const entry: LeaderboardEntry = { name, email, points: this.currentGoScore };
+    const mode = await saveLeaderboardEntry(entry);
+
+    if (mode === 'local') {
+      this.goSaveStatus.textContent = 'Saved locally on this device.';
+    } else {
+      this.goSaveStatus.textContent = 'Saved!';
+    }
+    this.goSaveStatus.style.color = '#44ff44';
+
+    // Refresh leaderboard
+    const entries = await loadLeaderboard();
+    this.renderLeaderboard(entries);
+  }
+
+  private renderLeaderboard(entries: LeaderboardEntry[]): void {
+    this.goLbBody.innerHTML = '';
+    if (entries.length === 0) {
+      this.goLbBody.textContent = 'No entries yet.';
+      return;
+    }
+
+    // Header row
+    const header = this.el('div', 'go-lb-row go-lb-header', this.goLbBody);
+    this.el('span', 'go-lb-rank', header).textContent = '#';
+    this.el('span', 'go-lb-name', header).textContent = 'Name';
+    this.el('span', 'go-lb-pts', header).textContent = 'Pts';
+
+    const top = entries.slice(0, 15);
+    for (let i = 0; i < top.length; i++) {
+      const e = top[i];
+      const row = this.el('div', 'go-lb-row', this.goLbBody);
+      this.el('span', 'go-lb-rank', row).textContent = String(i + 1);
+      this.el('span', 'go-lb-name', row).textContent = e.name;
+      this.el('span', 'go-lb-pts', row).textContent = String(e.points);
+    }
   }
 
   // ── Equip panel ──
