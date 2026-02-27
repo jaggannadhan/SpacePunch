@@ -22,6 +22,7 @@ import { ProjectileSystem } from '../systems/ProjectileSystem';
 import { ShatterVFX } from '../vfx/ShatterVFX';
 import { PlasmaShockwave } from '../vfx/PlasmaShockwave';
 import { SuperSaiyanSystem } from '../systems/SuperSaiyanSystem';
+import { InputManager } from '../systems/InputManager';
 import { Loot, type LootType } from '../entities/Loot';
 import {
   AMMO_MAX_LEVEL, AMMO_UPGRADE_COST,
@@ -94,6 +95,7 @@ export class GameScene extends Phaser.Scene {
   private projectileSystem!: ProjectileSystem;
   private plasmaShockwave!: PlasmaShockwave;
   private superSaiyanSystem!: SuperSaiyanSystem;
+  private inputManager!: InputManager;
   hud!: HUD;
 
   private gameOver = false;
@@ -173,9 +175,13 @@ export class GameScene extends Phaser.Scene {
     // Generate fallback textures
     this.generateFallbackTextures();
 
+    // Input manager (handles keyboard / gyro / touch)
+    this.inputManager = new InputManager(this);
+
     // Car with saved skin
     const savedSkin = settingsStore.get().selectedSkinId;
     this.car = new Car(this, `skin_${savedSkin}`);
+    this.car.setInputManager(this.inputManager);
 
     // Meteor manager with available texture keys
     this.meteorManager = new MeteorManager(this, this.meteorTextureKeys);
@@ -246,6 +252,9 @@ export class GameScene extends Phaser.Scene {
     this.bubbleGfx.setDepth(9);
     this.bubbleGfx.setVisible(false);
     this.bubbleVisible = false;
+
+    // Cleanup gyro listener on scene shutdown
+    this.events.once('shutdown', () => this.inputManager.cleanup());
 
     // Show start overlay (game doesn't start until player clicks)
     this.hud.showStartOverlay();
@@ -527,7 +536,38 @@ export class GameScene extends Phaser.Scene {
     this.hud.showGameOver(this.stageSystem.stage, this.totalScore);
   }
 
-  /** Called by HUD start overlay to begin the first run. */
+  /** Called by HUD when "Enter sector 1X1" is clicked. */
+  onStartClicked(): void {
+    if (this.inputManager.isMobile && InputManager.needsGyroPermission()) {
+      // iOS: needs explicit permission — show gyro prompt
+      this.hud.showGyroPrompt();
+    } else if (this.inputManager.isMobile) {
+      // Android / other mobile: enable gyro (auto-falls back to touch)
+      this.inputManager.enableGyro();
+      this.startRun();
+    } else {
+      // Desktop: keyboard controls
+      this.startRun();
+    }
+  }
+
+  /** Called by HUD gyro-permission buttons. */
+  async onGyroChoice(enableGyro: boolean): Promise<void> {
+    this.hud.hideGyroPrompt();
+    if (enableGyro) {
+      const granted = await this.inputManager.requestGyroPermission();
+      if (granted) {
+        this.inputManager.enableGyro();
+      } else {
+        this.inputManager.enableTouch();
+      }
+    } else {
+      this.inputManager.enableTouch();
+    }
+    this.startRun();
+  }
+
+  /** Begin gameplay — called after input mode is resolved. */
   startRun(): void {
     this.isGameStarted = true;
     this.car.sprite.setVisible(true);
@@ -591,9 +631,10 @@ export class GameScene extends Phaser.Scene {
     this.rubyCount = 0;
     this.totalScore = 0;
 
-    // Reset VFX
+    // Reset VFX + input
     this.nearMissVFX.reset();
     this.car.inputDisabled = false;
+    this.inputManager.resetTouch();
 
     // Re-show shield arc, hide bubble
     this.shieldGfx?.setVisible(true);

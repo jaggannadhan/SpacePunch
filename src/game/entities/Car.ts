@@ -6,6 +6,7 @@ import {
   IFRAME_SMALL_MS, IFRAME_BIG_MS,
   SHIELD_MAX_LEVEL, SHIELD_IMPACT_DIVISOR,
 } from '../GameConfig';
+import type { InputManager } from '../systems/InputManager';
 
 const FALLBACK_TEXTURE = 'skin_default';
 
@@ -24,6 +25,7 @@ export class Car {
   private iframeTween: Phaser.Tweens.Tween | null = null;
   private knockTween: Phaser.Tweens.Tween | null = null;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private inputManager: InputManager | null = null;
 
   constructor(scene: Phaser.Scene, textureKey: string) {
     this.scene = scene;
@@ -41,6 +43,10 @@ export class Car {
   get y(): number { return this.sprite.y; }
 
   get shieldActive(): boolean { return this.shieldLevel > 0; }
+
+  setInputManager(manager: InputManager): void {
+    this.inputManager = manager;
+  }
 
   /** Swap skin texture mid-game */
   setSkin(textureKey: string): void {
@@ -62,18 +68,24 @@ export class Car {
   update(dt: number): void {
     if (this.inputDisabled || this.knockTween?.isPlaying()) return;
 
-    let vx = 0;
-    let vy = 0;
-    if (this.cursors.left.isDown) vx = -1;
-    if (this.cursors.right.isDown) vx = 1;
-    if (this.cursors.up.isDown) vy = -1;
-    if (this.cursors.down.isDown) vy = 1;
+    let vx: number;
+    let vy: number;
 
-    // Normalize diagonal movement
-    if (vx !== 0 && vy !== 0) {
-      const inv = 1 / Math.SQRT2;
-      vx *= inv;
-      vy *= inv;
+    if (this.inputManager) {
+      ({ vx, vy } = this.inputManager.getDirection(this.x, this.y));
+    } else {
+      // Fallback: direct keyboard read (no InputManager)
+      vx = 0;
+      vy = 0;
+      if (this.cursors.left.isDown) vx = -1;
+      if (this.cursors.right.isDown) vx = 1;
+      if (this.cursors.up.isDown) vy = -1;
+      if (this.cursors.down.isDown) vy = 1;
+      if (vx !== 0 && vy !== 0) {
+        const inv = 1 / Math.SQRT2;
+        vx *= inv;
+        vy *= inv;
+      }
     }
 
     const r = CAR_DIAMETER / 2;

@@ -86,6 +86,9 @@ export class HUD {
   private startOverlayEl!: HTMLElement;
   private startNameInput!: HTMLInputElement;
 
+  // Gyro permission prompt
+  private gyroPromptEl!: HTMLElement;
+
   // Game over overlay
   private gameOverEl: HTMLElement;
   private goScore!: HTMLElement;
@@ -333,6 +336,29 @@ export class HUD {
     this.startNameInput.addEventListener('input', () => {
       startBtn.disabled = !this.startNameInput.value.trim();
     });
+
+    // ── Gyro permission prompt ──
+    this.gyroPromptEl = this.el('div', 'gyro-prompt', container);
+    this.gyroPromptEl.style.display = 'none';
+
+    this.el('div', 'gyro-prompt-text', this.gyroPromptEl).textContent =
+      'Enable motion controls?';
+    this.el('div', 'gyro-prompt-sub', this.gyroPromptEl).textContent =
+      'Tilt your device to steer';
+
+    const gyroBtns = this.el('div', 'gyro-prompt-btns', this.gyroPromptEl);
+
+    const enableGyroBtn = document.createElement('button');
+    enableGyroBtn.className = 'gyro-btn gyro-btn-enable';
+    enableGyroBtn.textContent = 'Enable Gyro';
+    enableGyroBtn.addEventListener('click', () => this.scene.onGyroChoice(true));
+    gyroBtns.appendChild(enableGyroBtn);
+
+    const useTouchBtn = document.createElement('button');
+    useTouchBtn.className = 'gyro-btn gyro-btn-touch';
+    useTouchBtn.textContent = 'Use Touch';
+    useTouchBtn.addEventListener('click', () => this.scene.onGyroChoice(false));
+    gyroBtns.appendChild(useTouchBtn);
 
     // ── Game over overlay ──
     this.gameOverEl = this.el('div', 'game-over', container);
@@ -645,7 +671,15 @@ export class HUD {
       localStorage.setItem('player.name', name);
     }
     this.hideStartOverlay();
-    this.scene.startRun();
+    this.scene.onStartClicked();
+  }
+
+  showGyroPrompt(): void {
+    this.gyroPromptEl.style.display = 'flex';
+  }
+
+  hideGyroPrompt(): void {
+    this.gyroPromptEl.style.display = 'none';
   }
 
   // ── Equip panel ──

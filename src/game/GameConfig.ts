@@ -181,3 +181,9 @@ export const RUBY_DROP_CHANCE = 0.35;         // 35% chance per qualifying kill
 export const RUBY_LIFETIME_MS = 8000;         // 8s before fade-out
 export const RUBY_DRIFT_VY = 15;              // slow downward drift px/s
 export const RUBY_WOBBLE_SPEED = 25;          // horizontal wobble amplitude px/s
+
+// ── Gyroscope / Touch Controls ──
+export const GYRO_DEADZONE_DEG = 2;
+export const GYRO_MAX_TILT_DEG = 30;
+export const GYRO_SMOOTHING = 0.85;   // low-pass filter factor (higher = smoother)
+export const TOUCH_DEADZONE_PX = 10;  // min distance before touch-drag moves car
