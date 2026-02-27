@@ -23,23 +23,48 @@ npm run preview    # preview the production build
 
 ## Controls
 
+### Desktop
 | Key | Action |
 |-----|--------|
 | Arrow Keys | Move the ship |
 | R | Restart after game over |
+
+### Mobile / iPad
+On mobile devices, the game auto-detects and offers two control modes:
+- **Gyroscope** — Tilt your device to steer (iOS prompts for motion permission)
+- **Touch** — Drag anywhere on screen to move the ship toward your finger
+
+If gyroscope is unavailable or permission is denied, touch controls activate automatically.
 
 ## Gameplay
 
 ### Stages & Timer
 Each stage lasts 60 seconds. The timer resets each stage and blinks red in the last 10 seconds. Stages are infinite.
 
-### Scoring (Near-Miss Points)
-Fly close to meteors without touching them:
-- Gap < 5px — +5 points
-- Gap < 8px — +3 points
-- Gap < 10px — +1 point
+### Scoring
+Points are earned from multiple actions during a run:
 
-Each meteor awards points once (highest tier reached). Floating "+N" text appears on near-misses.
+| Event | Points |
+|-------|--------|
+| Near-miss (per combo tier) | combo × 10 |
+| Destroy small meteor | 40 |
+| Destroy big meteor | 70 |
+| Collect gold | 15 |
+| Collect diamond | 50 |
+| Collect ruby | 80 |
+| Collect shield | 25 |
+
+A live score counter is displayed below the shield bar. Near-misses show floating "+N" text.
+
+### Leaderboard
+After game over, your score can be saved to a persistent leaderboard:
+- Enter your name (required) and email (optional) to save
+- Top 15 scores displayed in the game-over overlay
+- In dev mode, scores persist via a Vite API plugin; in production, scores are stored in LocalStorage
+- Duplicate names are de-duplicated — only the highest score is kept
+
+### Start Screen
+The game shows a start overlay on launch — enter your pilot name and click "Enter sector 1X1" to begin. Your name is saved to LocalStorage and auto-fills the leaderboard form on game over. On retry, the start overlay is skipped.
 
 ### Combo & Ultimate Mode
 Near-misses build a combo meter (0–100%). At 100%, **Ultimate Mode** triggers for 10 seconds — the stage timer pauses and all on-screen loot magnets toward your ship.
@@ -118,11 +143,14 @@ src/
 │   │   ├── AudioManager.ts          # Music + SFX
 │   │   ├── CollisionSystem.ts       # Hit detection
 │   │   ├── DifficultyManager.ts     # Stage-based scaling
+│   │   ├── InputManager.ts          # Keyboard / gyro / touch input
+│   │   ├── LeaderboardService.ts    # Leaderboard persistence (API + LS)
 │   │   ├── LootManager.ts           # Loot spawning + magnet
 │   │   ├── MeteorManager.ts         # Meteor spawning
 │   │   ├── PowerupManager.ts        # Powerup spawning
 │   │   ├── ProjectileSystem.ts      # Ammunition + Ultra Saiyan firing
 │   │   ├── ScoreSystem.ts           # Near-miss combos
+│   │   ├── ScoreWeights.ts          # Per-event point values
 │   │   ├── SettingsStore.ts         # LocalStorage persistence
 │   │   ├── StageSystem.ts           # Timer + progression
 │   │   ├── SuperSaiyanSystem.ts     # Infinite shield charges
@@ -130,6 +158,7 @@ src/
 │   └── vfx/
 │       ├── HitVFX.ts                # Impact stars + screen shake
 │       ├── NearMissVFX.ts           # Floating score text
+│       ├── PlasmaShockwave.ts       # Ultra Lv3 expanding ring
 │       ├── ShatterVFX.ts            # Meteor destruction particles
 │       └── StageTransitionFX.ts     # Hyperdrive + jet trails
 └── assets/
