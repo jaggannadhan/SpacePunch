@@ -36,7 +36,7 @@ export class LootManager {
     for (let i = this.loots.length - 1; i >= 0; i--) {
       const l = this.loots[i];
       l.update(dt);
-      if (l.isOffScreen() || l.collected) {
+      if (l.isOffScreen() || l.collected || l.expired) {
         l.destroy();
         this.loots.splice(i, 1);
       }

@@ -154,9 +154,15 @@ export const LOOT_SPEED = 45; // px/s downward (slightly slower than meteors)
 export const LOOT_SPAWN_MIN_MS = 2500;
 export const LOOT_SPAWN_MAX_MS = 5000;
 export const LOOT_SAFE_DISTANCE = 60; // min px from big meteor at spawn
-// Weighted spawn distribution: gold 70%, diamond 20%, ruby 10%
+// Weighted spawn distribution (falling loot only — ruby excluded, drops from big meteors)
 export const LOOT_WEIGHTS: { id: string; weight: number }[] = [
-  { id: 'gold', weight: 0.70 },
-  { id: 'diamond', weight: 0.20 },
-  { id: 'ruby', weight: 0.10 },
+  { id: 'gold', weight: 0.78 },
+  { id: 'diamond', weight: 0.22 },
 ];
+
+// Ruby drops (only from big meteor kills by cannon fire)
+export const BIG_METEOR_RUBY_THRESHOLD = 45; // min meteor diameter to drop ruby
+export const RUBY_DROP_CHANCE = 0.35;         // 35% chance per qualifying kill
+export const RUBY_LIFETIME_MS = 8000;         // 8s before fade-out
+export const RUBY_DRIFT_VY = 15;              // slow downward drift px/s
+export const RUBY_WOBBLE_SPEED = 25;          // horizontal wobble amplitude px/s

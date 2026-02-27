@@ -21,11 +21,13 @@ import { UltimateModeSystem } from '../systems/UltimateModeSystem';
 import { ProjectileSystem } from '../systems/ProjectileSystem';
 import { ShatterVFX } from '../vfx/ShatterVFX';
 import { SuperSaiyanSystem } from '../systems/SuperSaiyanSystem';
-import type { LootType } from '../entities/Loot';
+import { Loot, type LootType } from '../entities/Loot';
 import {
   AMMO_MAX_LEVEL, AMMO_UPGRADE_COST,
   SS_DIAMOND_LV1,
   SS_BUBBLE_RADIUS, SS_BUBBLE_RINGS, SS_BUBBLE_PULSE_SPEED,
+  BIG_METEOR_RUBY_THRESHOLD, RUBY_DROP_CHANCE, RUBY_LIFETIME_MS,
+  LOOT_RENDER_SIZE,
 } from '../GameConfig';
 import powerupsManifest from '../../assets/powerups/powerups.json';
 import lootManifest from '../../assets/loot/loot.json';
@@ -343,6 +345,10 @@ export class GameScene extends Phaser.Scene {
     for (const hit of projHits) {
       if (hit.destroyed) {
         ShatterVFX.spawn(this, hit.x, hit.y, hit.meteor.diameter);
+        // Ruby drop from big meteor kills
+        if (hit.meteor.diameter >= BIG_METEOR_RUBY_THRESHOLD && Math.random() < RUBY_DROP_CHANCE) {
+          this.spawnRubyDrop(hit.x, hit.y);
+        }
         hit.meteor.destroy();
         const idx = this.meteorManager.meteors.indexOf(hit.meteor);
         if (idx !== -1) this.meteorManager.meteors.splice(idx, 1);
@@ -733,6 +739,56 @@ export class GameScene extends Phaser.Scene {
       emitting: false,
     });
     sparks.explode(6);
+  }
+
+  private spawnRubyDrop(x: number, y: number): void {
+    const ruby = new Loot(this, x, y, 'loot:ruby', 'ruby');
+    ruby.setDropMode(RUBY_LIFETIME_MS);
+    this.lootManager.loots.push(ruby);
+
+    // Pop animation: scale 0.2 → 1.15 (120ms) → settle 1.0 (150ms)
+    const maxDim = Math.max(ruby.sprite.frame.width, ruby.sprite.frame.height);
+    const baseScale = maxDim > 0 ? LOOT_RENDER_SIZE / maxDim : 1;
+    ruby.sprite.setScale(baseScale * 0.2);
+    ruby.sprite.setAlpha(0.6);
+
+    this.tweens.add({
+      targets: ruby.sprite,
+      scaleX: baseScale * 1.15,
+      scaleY: baseScale * 1.15,
+      alpha: 1,
+      duration: 120,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: ruby.sprite,
+          scaleX: baseScale,
+          scaleY: baseScale,
+          duration: 150,
+          ease: 'Sine.easeOut',
+        });
+      },
+    });
+
+    // Sparkle burst
+    if (!this.textures.exists('ruby_spark')) {
+      const gfx = this.add.graphics();
+      gfx.fillStyle(0xff5566);
+      gfx.fillCircle(2, 2, 2);
+      gfx.generateTexture('ruby_spark', 4, 4);
+      gfx.destroy();
+    }
+
+    const sparks = this.add.particles(x, y, 'ruby_spark', {
+      speed: { min: 30, max: 120 },
+      scale: { start: 1.5, end: 0 },
+      alpha: { start: 0.9, end: 0 },
+      tint: [0xff5566, 0xff8899, 0xffaacc],
+      lifespan: 400,
+      quantity: 8,
+      emitting: false,
+    });
+    sparks.explode(8);
   }
 
   private playPowerupCollectEffect(px: number, py: number): void {

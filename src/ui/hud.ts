@@ -95,6 +95,15 @@ export class HUD {
     }
     container.innerHTML = '';
 
+    // ── Top-right: Buy me a coffee link ──
+    const coffeeLink = document.createElement('a');
+    coffeeLink.className = 'bmc-link';
+    coffeeLink.href = 'https://buymeacoffee.com/jaggannadhan';
+    coffeeLink.target = '_blank';
+    coffeeLink.rel = 'noopener noreferrer';
+    coffeeLink.textContent = 'Buy me a coffee \u2615';
+    container.appendChild(coffeeLink);
+
     // ── Top-left stats ──
     const stats = this.el('div', 'hud-stats', container);
     this.timerEl = this.el('div', 'hud-timer', stats);
