@@ -27,7 +27,7 @@ import {
   SS_DIAMOND_LV1,
   SS_BUBBLE_RADIUS, SS_BUBBLE_RINGS, SS_BUBBLE_PULSE_SPEED,
   BIG_METEOR_RUBY_THRESHOLD, RUBY_DROP_CHANCE, RUBY_LIFETIME_MS,
-  LOOT_RENDER_SIZE,
+  LOOT_RENDER_SIZE, ULTRA_RUBY_GATE,
 } from '../GameConfig';
 import powerupsManifest from '../../assets/powerups/powerups.json';
 import lootManifest from '../../assets/loot/loot.json';
@@ -443,6 +443,8 @@ export class GameScene extends Phaser.Scene {
       ssShieldActive: this.superSaiyanSystem.active,
       ssRemainingMs: this.superSaiyanSystem.remainingTime,
       ssTotalCharges: this.superSaiyanSystem.totalCharges,
+      ultraLevel: this.projectileSystem.ultraLevel,
+      ultraEnabled: this.rubyCount >= ULTRA_RUBY_GATE,
     });
   }
 
@@ -493,6 +495,13 @@ export class GameScene extends Phaser.Scene {
     if (this.diamondCount < SS_DIAMOND_LV1) return;
     this.diamondCount -= SS_DIAMOND_LV1; // costs 5 diamonds
     this.superSaiyanSystem.activate(this.diamondCount + SS_DIAMOND_LV1); // pass pre-deduction count for level calc
+    this.updateHUD();
+  }
+
+  upgradeUltraSaiyan(): void {
+    if (this.projectileSystem.ultraLevel >= 2) return; // lv3 is coming soon
+    if (this.projectileSystem.ultraLevel === 0 && this.rubyCount < ULTRA_RUBY_GATE) return;
+    this.projectileSystem.ultraLevel++;
     this.updateHUD();
   }
 

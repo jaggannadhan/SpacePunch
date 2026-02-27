@@ -22,6 +22,8 @@ export interface HUDState {
   ssShieldActive: boolean;
   ssRemainingMs: number;
   ssTotalCharges: number;
+  ultraLevel: number;      // 0 = not equipped, 1–2 active, 3 = coming soon
+  ultraEnabled: boolean;   // rubyCount >= 2
 }
 
 /**
@@ -59,8 +61,10 @@ export class HUD {
   private equipPanel: HTMLElement;
   private ammoBtn: HTMLButtonElement;
   private ssBtn: HTMLButtonElement;
+  private usBtn: HTMLButtonElement;
   private ammoLabel: HTMLElement;
   private ssLabel: HTMLElement;
+  private usLabel: HTMLElement;
 
   // SS status indicator (top-left, below shield bar)
   private ssStatusEl: HTMLElement;
@@ -68,7 +72,7 @@ export class HUD {
   // Badge pulse tracking (gold: multiples of 10, diamond: multiples of 5)
   private prevGoldTens = 0;
   private prevDiamondFives = 0;
-  private prevRubyTens = 0;
+  private prevRubyTwos = 0;
 
   // Game over overlay
   private gameOverEl: HTMLElement;
@@ -249,6 +253,21 @@ export class HUD {
     this.ssLabel = this.el('span', 'ep-item-label', this.ssBtn);
     this.ssLabel.textContent = 'Super Saiyan (5D)';
 
+    // Ultra Saiyan button
+    this.usBtn = document.createElement('button');
+    this.usBtn.className = 'ep-item-btn';
+    this.usBtn.disabled = true;
+    this.usBtn.addEventListener('click', () => {
+      this.scene.upgradeUltraSaiyan();
+      this.equipPanel.style.display = 'none';
+    });
+    this.equipPanel.appendChild(this.usBtn);
+
+    const usIcon = this.el('span', 'ep-item-icon', this.usBtn);
+    usIcon.textContent = '\u{1F525}'; // 🔥
+    this.usLabel = this.el('span', 'ep-item-label', this.usBtn);
+    this.usLabel.textContent = 'Ultra Saiyan (2R)';
+
     // Close equip panel on outside click (pointerdown reliably fires from canvas)
     document.addEventListener('pointerdown', (e) => {
       const target = e.target as HTMLElement;
@@ -326,7 +345,9 @@ export class HUD {
     // Badge: count of available upgrades
     const ammoUps = state.availableAmmoLevel; // already capped by GameScene
     const ssAvail = (!state.ssRunning && state.ssUnlockedLevel > 0) ? 1 : 0;
-    const badgeCount = ammoUps + ssAvail;
+    const usAvail = (state.ultraEnabled && state.ultraLevel === 0) ? 1 :
+                    (state.ultraLevel === 1) ? 1 : 0;
+    const badgeCount = ammoUps + ssAvail + usAvail;
     if (badgeCount > 0) {
       this.equipBadge.textContent = String(badgeCount);
       this.equipBadge.style.display = '';
@@ -334,11 +355,11 @@ export class HUD {
       this.equipBadge.style.display = 'none';
     }
 
-    // Badge pulse when any loot crosses a multiple of 10
+    // Badge pulse when loot crosses thresholds (gold: 10, diamond: 5, ruby: 2)
     const gTens = Math.floor(state.gold / 10);
     const dFives = Math.floor(state.diamond / 5);
-    const rTens = Math.floor(state.ruby / 10);
-    if (gTens > this.prevGoldTens || dFives > this.prevDiamondFives || rTens > this.prevRubyTens) {
+    const rTwos = Math.floor(state.ruby / 2);
+    if (gTens > this.prevGoldTens || dFives > this.prevDiamondFives || rTwos > this.prevRubyTwos) {
       this.equipBadge.classList.remove('equip-badge-pulse');
       // Force reflow to restart animation
       void this.equipBadge.offsetWidth;
@@ -346,7 +367,7 @@ export class HUD {
     }
     this.prevGoldTens = gTens;
     this.prevDiamondFives = dFives;
-    this.prevRubyTens = rTens;
+    this.prevRubyTwos = rTwos;
 
     // Ammo button state (3 levels)
     const intervalLabels: Record<number, string> = { 1: '0.5s', 2: '0.1s', 3: '0.1s Wt' };
@@ -380,6 +401,21 @@ export class HUD {
     } else {
       this.ssBtn.disabled = true;
       this.ssLabel.textContent = 'Super Saiyan (need 5D)';
+    }
+
+    // Ultra Saiyan button state
+    if (state.ultraLevel >= 2) {
+      this.usBtn.disabled = true;
+      this.usLabel.textContent = 'Ultra Lv2/3 (Lv3 Soon)';
+    } else if (state.ultraLevel === 1) {
+      this.usBtn.disabled = false;
+      this.usLabel.textContent = 'Ultra Lv1/3 \u2192 Lv2';
+    } else if (state.ultraEnabled) {
+      this.usBtn.disabled = false;
+      this.usLabel.textContent = 'Ultra Saiyan (Equip)';
+    } else {
+      this.usBtn.disabled = true;
+      this.usLabel.textContent = 'Ultra Saiyan (need 2R)';
     }
 
     // SS status indicator

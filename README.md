@@ -51,10 +51,11 @@ Near-misses build a combo meter (0–100%). At 100%, **Ultimate Mode** triggers 
 - Shield displayed as a colored arc: red (1–3) → orange (4–7) → cyan (8–10).
 
 ### Loot
-Three collectible types drop from the sky:
-- **Gold** (70% drop rate) — spend 10 to upgrade ammunition
-- **Diamonds** (20%) — spend 5 to activate Super Saiyan
-- **Rubies** (10%) — rare collectible
+Two collectible types fall from the sky:
+- **Gold** (78% drop rate) — spend 10 to upgrade ammunition
+- **Diamonds** (22%) — spend 5 to activate Super Saiyan
+
+**Rubies** don't fall — they only drop when you destroy a big meteor (diameter >= 45) with cannon fire (35% chance). Rubies pop in with a sparkle animation, drift with a gentle wobble, and fade out after 8 seconds if not collected. Collect 2 rubies to unlock Ultra Saiyan.
 
 ### Ammunition System
 Upgrade your cannons with gold (10 per level, max 3):
@@ -72,6 +73,14 @@ Activate with 5 diamonds for a timed infinite shield:
 - **Level 2** (10+ diamonds): 2 charges × 20 seconds (stacked)
 
 While active, a cyan bubble shield absorbs all damage. Costs 5 diamonds per use, reusable whenever you have enough.
+
+### Ultra Saiyan Mode
+Unlocked with 2 rubies. Adds multi-directional cannon fire on top of existing ammunition:
+- **Level 1** — Fires NW + NE diagonal shots at 0.1s interval
+- **Level 2** — Fires in all 8 directions (N/S/E/W + diagonals) at 0.1s, red bolts dealing 0.25 damage each
+- **Level 3** — Coming soon
+
+Upgrading is free once unlocked — just click in the equip panel. Both ammunition and Ultra Saiyan fire independently.
 
 ### Difficulty
 Each stage picks a difficulty via weighted random:
@@ -112,7 +121,7 @@ src/
 │   │   ├── LootManager.ts           # Loot spawning + magnet
 │   │   ├── MeteorManager.ts         # Meteor spawning
 │   │   ├── PowerupManager.ts        # Powerup spawning
-│   │   ├── ProjectileSystem.ts      # Ammunition firing
+│   │   ├── ProjectileSystem.ts      # Ammunition + Ultra Saiyan firing
 │   │   ├── ScoreSystem.ts           # Near-miss combos
 │   │   ├── SettingsStore.ts         # LocalStorage persistence
 │   │   ├── StageSystem.ts           # Timer + progression

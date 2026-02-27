@@ -139,6 +139,15 @@ export const AMMO_FIRE_INTERVALS: Record<number, number> = {
   3: 100, // 0.1s (weighted/red)
 };
 export const AMMO_LV3_DAMAGE = 0.25; // damage per hit at level 3
+
+// ── Ultra Saiyan ──
+export const ULTRA_RUBY_GATE = 2;            // rubies needed to enable
+export const ULTRA_MAX_LEVEL = 3;            // conceptual max (lv3 = coming soon)
+export const ULTRA_FIRE_INTERVAL_MS = 100;   // 0.1s fire rate
+export const ULTRA_LV2_DAMAGE = 0.25;        // same as weighted ammo
+export const ULTRA_MUZZLE_DIST = 14;         // spawn offset from car center
+export const MAX_PROJECTILES = 250;          // performance cap
+
 // ── Super Saiyan ──
 export const SS_DIAMOND_LV1 = 5;   // diamonds needed to unlock level 1
 export const SS_DIAMOND_LV2 = 10;  // diamonds needed to unlock level 2
