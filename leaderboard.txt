@@ -1,3 +1,2 @@
-Space Ace		500
-Nova		300
-Cosmo		150
+Juggernaut		3180
+

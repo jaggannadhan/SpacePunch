@@ -82,6 +82,10 @@ export class HUD {
   private prevDiamondFives = 0;
   private prevRubyTwos = 0;
 
+  // Start overlay
+  private startOverlayEl!: HTMLElement;
+  private startNameInput!: HTMLInputElement;
+
   // Game over overlay
   private gameOverEl: HTMLElement;
   private goScore!: HTMLElement;
@@ -293,6 +297,41 @@ export class HUD {
       if (!equipArea.contains(target) && this.equipPanel.style.display !== 'none') {
         this.equipPanel.style.display = 'none';
       }
+    });
+
+    // ── Start overlay ──
+    this.startOverlayEl = this.el('div', 'start-overlay', container);
+    this.startOverlayEl.style.display = 'none';
+
+    this.el('div', 'start-title', this.startOverlayEl).textContent = 'SPACE PUNCH';
+
+    const startGreeting = this.el('div', 'start-greeting', this.startOverlayEl);
+    const greetLabel = document.createTextNode('Hi, ');
+    startGreeting.appendChild(greetLabel);
+
+    this.startNameInput = document.createElement('input');
+    this.startNameInput.className = 'start-input';
+    this.startNameInput.placeholder = 'Pilot';
+    this.startNameInput.maxLength = 30;
+    // Pre-fill from localStorage
+    const savedName = localStorage.getItem('player.name');
+    if (savedName) this.startNameInput.value = savedName;
+    startGreeting.appendChild(this.startNameInput);
+
+    this.el('div', 'start-briefing', this.startOverlayEl).textContent =
+      'Get ready to be Bombarded!';
+    this.el('div', 'start-subtitle', this.startOverlayEl).textContent =
+      'May the force be with you...';
+
+    const startBtn = document.createElement('button');
+    startBtn.className = 'start-btn';
+    startBtn.textContent = 'Enter sector 1X1';
+    startBtn.disabled = !this.startNameInput.value.trim();
+    startBtn.addEventListener('click', () => this.handleStart());
+    this.startOverlayEl.appendChild(startBtn);
+
+    this.startNameInput.addEventListener('input', () => {
+      startBtn.disabled = !this.startNameInput.value.trim();
     });
 
     // ── Game over overlay ──
@@ -512,7 +551,8 @@ export class HUD {
     this.retryBtn.disabled = false;
     this.goSaveBtn.disabled = false;
     this.goSaveStatus.textContent = '';
-    this.goNameInput.value = '';
+    // Autofill name from localStorage
+    this.goNameInput.value = localStorage.getItem('player.name') || '';
     this.goEmailInput.value = '';
 
     // Load and display leaderboard
@@ -542,6 +582,9 @@ export class HUD {
       this.goSaveStatus.style.color = '#ff6644';
       return;
     }
+
+    // Persist name to localStorage for future autofill
+    localStorage.setItem('player.name', name);
 
     this.goSaveBtn.disabled = true;
     this.goSaveStatus.textContent = 'Saving...';
@@ -583,6 +626,26 @@ export class HUD {
       this.el('span', 'go-lb-name', row).textContent = e.name;
       this.el('span', 'go-lb-pts', row).textContent = String(e.points);
     }
+  }
+
+  // ── Start overlay ──
+
+  showStartOverlay(): void {
+    this.startOverlayEl.style.display = 'flex';
+    this.startNameInput.focus();
+  }
+
+  private hideStartOverlay(): void {
+    this.startOverlayEl.style.display = 'none';
+  }
+
+  private handleStart(): void {
+    const name = this.startNameInput.value.trim();
+    if (name) {
+      localStorage.setItem('player.name', name);
+    }
+    this.hideStartOverlay();
+    this.scene.startRun();
   }
 
   // ── Equip panel ──

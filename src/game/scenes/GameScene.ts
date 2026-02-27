@@ -99,6 +99,7 @@ export class GameScene extends Phaser.Scene {
   private gameOver = false;
   private freezeTimer = 0;
   private restarting = false;
+  private isGameStarted = false;
 
   // Loot counters (reset per run)
   private goldCount = 0;
@@ -213,11 +214,11 @@ export class GameScene extends Phaser.Scene {
     this.audio = new AudioManager(this);
     this.audio.init();
     this.audio.applyMuteState(settingsStore.get().muted);
-    this.audio.playGameOn();
 
     this.gameOver = false;
     this.freezeTimer = 0;
     this.restarting = false;
+    this.isGameStarted = false;
     this.shieldTime = 0;
     this.shieldFlareTimer = 0;
     this.goldCount = 0;
@@ -226,7 +227,10 @@ export class GameScene extends Phaser.Scene {
     this.totalScore = 0;
 
     this.difficultyManager.pickForStage(1);
-    this.updateHUD();
+
+    // Hide car + shield until game starts
+    this.car.sprite.setVisible(false);
+    this.car.inputDisabled = true;
 
     this.input.keyboard!.on('keydown-R', () => {
       if (this.gameOver && !this.restarting) this.restartGame();
@@ -235,16 +239,27 @@ export class GameScene extends Phaser.Scene {
     // Create shield graphics object
     this.shieldGfx = this.add.graphics();
     this.shieldGfx.setDepth(9);
-    this.drawShieldArc();
+    this.shieldGfx.setVisible(false);
 
     // Create bubble shield graphics (SS)
     this.bubbleGfx = this.add.graphics();
     this.bubbleGfx.setDepth(9);
     this.bubbleGfx.setVisible(false);
     this.bubbleVisible = false;
+
+    // Show start overlay (game doesn't start until player clicks)
+    this.hud.showStartOverlay();
   }
 
   update(_time: number, delta: number): void {
+    const dt = delta / 1000;
+
+    // Starfield always animates (even before game starts)
+    this.updateStarfield(dt);
+
+    // Before game starts, nothing else runs
+    if (!this.isGameStarted) return;
+
     // Freeze frame runs even after gameOver flag is set, to trigger the overlay
     if (this.freezeTimer > 0) {
       this.freezeTimer -= delta;
@@ -253,10 +268,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.gameOver) return;
-
-    const dt = delta / 1000;
-
-    this.updateStarfield(dt);
 
     const stageChanged = this.stageSystem.update(delta);
     if (stageChanged) {
@@ -516,6 +527,17 @@ export class GameScene extends Phaser.Scene {
     this.hud.showGameOver(this.stageSystem.stage, this.totalScore);
   }
 
+  /** Called by HUD start overlay to begin the first run. */
+  startRun(): void {
+    this.isGameStarted = true;
+    this.car.sprite.setVisible(true);
+    this.car.inputDisabled = false;
+    this.shieldGfx?.setVisible(true);
+    this.drawShieldArc();
+    this.audio.playGameOn();
+    this.updateHUD();
+  }
+
   upgradeAmmunition(): void {
     if (this.goldCount < AMMO_UPGRADE_COST) return;
     if (this.projectileSystem.ammoLevel >= AMMO_MAX_LEVEL) return;
@@ -559,6 +581,7 @@ export class GameScene extends Phaser.Scene {
     this.plasmaShockwave.clearAll();
     this.superSaiyanSystem.reset();
     this.difficultyManager.pickForStage(1);
+    this.isGameStarted = true;
     this.gameOver = false;
     this.freezeTimer = 0;
     this.shieldTime = 0;
